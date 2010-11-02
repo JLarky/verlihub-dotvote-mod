@@ -20,7 +20,7 @@ function VH_OnParsedMsgChat(nick,data)
       local nick2v = string.lower(nick2vote)
       result, res = VH:SQLQuery("select class from reglist WHERE LOWER(nick)='"..quote(nick2v).."'")
       result, class = VH:SQLFetch(0)
-	  if (class=="2" or class=="3" or class=="4") then
+	  if (class=="1" or class=="2" or class=="3" or class=="4") then
 	    _, sIp = VH:GetUserIP(nick)
 	    ip, obsh = str2ip(sIp)
 	    if obsh ~= 0 then
