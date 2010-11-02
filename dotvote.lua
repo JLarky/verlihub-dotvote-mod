@@ -1,0 +1,109 @@
+-- dotvote.lua
+
+-- airelain <airelain@gmail.com>
+-- выбор опов со всей демократией
+
+
+_, botname = VH:GetConfig("config", "hub_security")
+
+signame="time"
+
+function VH_OnUserLogin(nick)
+  VH:SendDataToUser ("$UserCommand 1 3 vote$<%[mynick]> .vote %[nick]&#124;|", nick)
+  return 1
+end
+
+function VH_OnParsedMsgChat(nick,data)
+  if string.find(data, "^%.vote", 1) then
+    local nick2vote = data:match("^.vote (.+)$")
+    if nick2vote then
+      local nick2v = string.lower(nick2vote)
+      result, res = VH:SQLQuery("select class from reglist WHERE LOWER(nick)='"..quote(nick2v).."'")
+      result, class = VH:SQLFetch(0)
+	  if (class=="2" or class=="3" or class=="4") then
+	    _, sIp = VH:GetUserIP(nick)
+	    ip, obsh = str2ip(sIp)
+	    if obsh ~= 0 then
+
+	      local query="insert into votes set vote_ip='"..quote(ip).."', op_nick='"..quote(nick2v).."' ON DUPLICATE KEY UPDATE op_nick='"..quote(nick2v).."';"
+	      VH:SQLQuery(query)
+	      SendMessageToUser(string.format("Ваш голос в пользу "..nick2vote.." был учтён, спасибо за неравнодушие к политической жизни хаба :)"), nick, botname)
+	    else
+	      SendMessageToUser(string.format("Голосовать могут только жители сети пунка и вунка"), nick, botname) 
+	    end
+	  else
+	    SendMessageToUser(string.format("Видимо '"..nick2vote.."' не хочет быть опом :)"), nick, botname)
+	  end
+    else
+      _, sIp = VH:GetUserIP(nick)
+      ip, obsh = str2ip(sIp)
+      local query="select op_nick from votes WHERE vote_ip='"..quote(ip).."';"
+      _, res = VH:SQLQuery(query)
+      result, op_nick = VH:SQLFetch(0)
+      if result then
+        SendMessageToUser(string.format("Ваш голос отдан "..op_nick..""), nick, botname)
+      else
+        SendMessageToUser(string.format("Вы пока ещё ни за кого не голосовали."), nick, botname)
+      end
+    end
+    return nil
+  end
+  -- if nick=='time'
+    -- readfile
+   -- drop every op
+  if nick == signame then
+    SendMessageToUser(data.."1", 'Aga', botname)
+    filename="/tmp/ops_changed.txt"
+    for line in io.lines(filename) do
+      SendMessageToUser("drop "..line, 'Aga', botname)
+      VH:CloseConnection(line)
+    end
+
+    SendMessageToUser(data.."2", 'Aga', botname)
+    return
+  end
+ return 1
+end
+
+function str2ip(str) -- from verlihub-extkiller-mod
+ local b1, b2, b3, b4 = str:match("^(%d+)%.(%d+)%.(%d+)%.(%d+)$")
+ if b4 then
+  local ip=b4+256*(b3+256*(b2+b1*256))
+  a, b = VH:SQLQuery("select residence from vtc.localnets where '"..ip.."'>`start` and '"..ip.."'<`end` limit 1")
+  if b>0 then
+   result, res = VH:SQLFetch(0)
+   VH:SQLFree()
+   return ip, res
+  else
+   VH:SQLFree()
+   return ip, 0
+  end
+ end
+  return nil
+end
+
+function SendMessageToUser(data, nick, from)
+	result, err = VH:SendDataToUser("<"..from.."> "..data.."|", nick)
+	return 1
+end
+
+function SendMessageToAll(data, from)
+	result, err = VH:SendDataToAll("<"..from.."> "..data.."|", 0, 10)
+	return 1
+end
+
+function SendPmMessageToUser(data, nick, from)
+	result, err = VH:SendDataToUser("$To: "..nick.." From: "..from.." $<"..from.."> "..data.."|", nick)
+	return 1
+end
+
+
+function quote(text)
+text = string.gsub(text, "\\", "\\\\");
+text = string.gsub(text, "'", "\\'");
+text = string.gsub(text, "\n", "\\\n");
+text = string.gsub(text, "\r", "\\\r");
+text = string.gsub(text, '"', '\\"');
+--text = string.gsub(text, "\0", "\\\0");
+return text
+end
